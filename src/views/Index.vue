@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref, computed, watch } from "vue";
+import { onMounted, onUnmounted, ref, computed, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { video, subscription } from "@/api";
 
@@ -56,6 +56,10 @@ const subscribedCount = computed(() => {
 
 // 添加订阅
 const addSubscribe = async (videoItem) => {
+  const confirmed = confirm(`确定要订阅《${videoItem.vod_name}》吗？`);
+  if (!confirmed) {
+    return;
+  }
   await subscription.subscribe({ vodId: videoItem.vod_id, vodName: videoItem.vod_name });
   await fetchSubscribedVideos();
   await fetchVideos();
@@ -63,15 +67,36 @@ const addSubscribe = async (videoItem) => {
 
 // 取消订阅
 const removeSubscribe = async (videoItem) => {
+  const confirmed = confirm(`确定要取消订阅《${videoItem.vod_name}》吗？`);
+  if (!confirmed) {
+    return;
+  }
   await subscription.unsubscribe(videoItem.vod_id);
   await fetchSubscribedVideos();
   await fetchVideos();
 }
 
+// 定时器ID
+let refreshTimer = null;
+
 onMounted(async () => {
   console.log("节目订阅页面已加载");
   await fetchSubscribedVideos();
   await fetchVideos();
+
+  // 设置定时器，每15秒自动刷新订阅列表
+  refreshTimer = setInterval(async () => {
+    console.log("自动刷新订阅列表");
+    await fetchSubscribedVideos();
+  }, 15000);
+});
+
+onUnmounted(() => {
+  // 清理定时器，防止内存泄漏
+  if (refreshTimer) {
+    clearInterval(refreshTimer);
+    refreshTimer = null;
+  }
 });
 </script>
 
@@ -148,7 +173,7 @@ onMounted(async () => {
         <div
           v-for="video in filteredVideos"
           :key="video.id"
-          class="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden group cursor-pointer"
+          class="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden group"
         >
           <!-- 节目信息 -->
           <div class="p-4">
@@ -165,7 +190,7 @@ onMounted(async () => {
               </div>
               <button
                   @click="addSubscribe(video)"
-                  class="mt-2 bg-blue-600 text-white hover:bg-blue-700 shadow-sm hover:shadowmt-4 w-full py-2 px-4 rounded-lg font-medium text-sm transition-all duration-200">
+                  class="mt-2 bg-blue-600 text-white hover:bg-blue-700 shadow-sm hover:shadowmt-4 w-full py-2 px-4 rounded-lg font-medium text-sm transition-all duration-200 cursor-pointer">
                 <span class="flex items-center justify-center">
                   <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
@@ -189,8 +214,11 @@ onMounted(async () => {
               </div>
               <button
                   @click="removeSubscribe(video)"
-                  class="mt-2 bg-red-600 text-white hover:bg-red-700 shadow-sm hover:shadowmt-4 w-full py-2 px-4 rounded-lg font-medium text-sm transition-all duration-200">
+                  class="mt-2 bg-red-600 text-white hover:bg-red-700 shadow-sm hover:shadowmt-4 w-full py-2 px-4 rounded-lg font-medium text-sm transition-all duration-200 cursor-pointer">
                 <span class="flex items-center justify-center">
+                  <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                  </svg>
                   取消订阅
                 </span>
               </button>
